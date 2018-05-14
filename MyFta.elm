@@ -26,19 +26,19 @@ padding : Float
 padding =
     30
 
-type alias Model = { data : List ( Int, Float )
-                   , xLabels : List ( Int, String ) }
+type alias Model = { nRange : List (Strategy, Float) }
+                   
 
+type Strategy = Uncalled
+              | Notified
+               
 model : Model
-model = { data = [ ( 1, 23.2 )
-                 , ( 2, 15.5 )
-                 ]
-        ,  xLabels = [ ( 1, "no-notification" )
-                     , ( 2,  "notification" )
-                     ]
+model = { nRange = [ ( Uncalled, 23.2 )
+                   , ( Notified , 15.5)
+                   ] 
         }
 
-xScale : List ( Int, String ) -> BandScale Int
+xScale : List (Strategy, Float ) -> BandScale Strategy
 xScale model =
     Scale.band { defaultBandConfig | paddingInner = 0.1, paddingOuter = 0.2 } (List.map Tuple.first model) ( 0, w - 2 * padding )
 
@@ -47,14 +47,9 @@ yScale : ContinuousScale
 yScale =
     Scale.linear ( 0, 30 ) ( h - 2 * padding, 0 )
 
-
--- xAxis : List ( Int, Float ) -> Svg msg
--- xAxis model =
---     Axis.axis { defaultOptions | orientation = Axis.Bottom, tickFormat = Just (toString ) } (Scale.toRenderable (xScale model))
-
---xAxis : List ( Int, String ) -> Svg msg
-xAxis xLabels =
-    Axis.axis { defaultOptions | orientation = Axis.Bottom } (Scale.toRenderable (xScale xLabels))
+xAxis : List ( Strategy, Float ) -> Svg msg
+xAxis nRange =
+    Axis.axis { defaultOptions | orientation = Axis.Bottom } (Scale.toRenderable (xScale nRange))
         
 
 yAxis : Svg msg
@@ -62,18 +57,18 @@ yAxis =
     Axis.axis { defaultOptions | orientation = Axis.Left, tickCount = 6 } yScale
 
 
-column : BandScale Int -> ( Int, Float ) -> Svg msg
-column xScale ( myInt, value ) =
+column : BandScale Strategy -> ( Strategy, Float ) -> Svg msg
+column xScale ( myStrategy, value ) =
     g [ class "column" ]
         [ rect
-            [ x <| toString <| Scale.convert xScale myInt
+            [ x <| toString <| Scale.convert xScale myStrategy
             , y <| toString <| Scale.convert yScale value
             , width <| toString <| Scale.bandwidth xScale
             , height <| toString <| h - Scale.convert yScale value - 2 * padding
             ]
             []
         , text_
-            [ x <| toString <| Scale.convert (Scale.toRenderable xScale) myInt
+            [ x <| toString <| Scale.convert (Scale.toRenderable xScale) myStrategy
             , y <| toString <| Scale.convert yScale value - 5
             , textAnchor "middle"
             ]
@@ -91,11 +86,11 @@ view model =
             .column:hover text { display: inline; }
           """ ]
         , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
-            [ xAxis model.xLabels ]
+            [ xAxis model.nRange ]
         , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
             [ yAxis ]
         , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "series" ] <|
-            List.map (column (xScale model.xLabels)) model.data
+            List.map (column (xScale model.nRange)) model.nRange
         ]
 
 main : Svg msg
