@@ -31,6 +31,13 @@ type alias Model = { nRange : List (Strategy, Float) }
 
 type Strategy = Uncalled
               | Notified
+
+fromStrategyToString : Strategy -> String
+fromStrategyToString myStrat =
+    case myStrat of
+        Uncalled -> "no-notification"
+        Notified -> "notification"
+        
                
 model : Model
 model = { nRange = [ ( Uncalled, 23.2 )
