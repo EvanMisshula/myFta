@@ -56,7 +56,7 @@ yScale =
 
 xAxis : List ( Strategy, Float ) -> Svg msg
 xAxis nRange =
-    Axis.axis { defaultOptions | orientation = Axis.Bottom } (Scale.toRenderable (xScale nRange))
+    Axis.axis { defaultOptions | orientation = Axis.Bottom, tickFormat = Just (fromStrategyToString) } (Scale.toRenderable (xScale nRange))
         
 
 yAxis : Svg msg
