@@ -26,7 +26,27 @@ padding : Float
 padding =
     30
 
-type alias Model = { nRange : List (Strategy, Float) }
+type alias Model = { nRange : List (Strategy, Float)
+                   , ciLower: List (Strategy, Float)
+                   , ciUpper: List (Strategy, Float)
+                   , stratCount : List (Strategy, Int)
+                   }
+               
+model : Model
+model = { nRange = [ ( Uncalled, 23.2)
+                   , ( Notified, 15.5)
+                   ] 
+        , ciLower = [ ( Uncalled, 19.93253)
+                    , ( Notified, 14.03265)
+                    ] 
+        , ciUpper = [ ( Uncalled, 26.67034)
+                    , ( Notified, 17.02423)
+                    ]
+        , stratCount = [ ( Uncalled, 630)
+                       , ( Notified, 2312)
+                       ]
+        }
+
                    
 
 type Strategy = Uncalled
@@ -38,13 +58,6 @@ fromStrategyToString myStrat =
         Uncalled -> "no-notification"
         Notified -> "notification"
         
-               
-model : Model
-model = { nRange = [ ( Uncalled, 23.2 )
-                   , ( Notified , 15.5)
-                   ] 
-        }
-
 xScale : List (Strategy, Float ) -> BandScale Strategy
 xScale model =
     Scale.band { defaultBandConfig | paddingInner = 0.1, paddingOuter = 0.2 } (List.map Tuple.first model) ( 0, w - 2 * padding )
