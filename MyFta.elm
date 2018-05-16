@@ -88,9 +88,9 @@ column xScale ( myStrategy, value ) =
             ]
             []
         , text_
-            [ x <| toString <| Scale.convert (Scale.toRenderable xScale) myStrategy
+            [ x <| toString <| ((Scale.convert (Scale.toRenderable xScale) myStrategy) + 20.0)
             , y <| toString <| Scale.convert yScale value - 5
-            , textAnchor "middle"
+            , textAnchor "right"
             ]
             [ text <| toString value ]
         ]
@@ -104,6 +104,9 @@ myCI nRange data =
     List.map (lineGenerator nRange) data
         |> Shape.line Shape.linearCurve
 
+bandOffset : Model  -> String
+bandOffset model  =
+    toString (0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
     
 view : Model -> Svg msg
 view model =
@@ -120,8 +123,8 @@ view model =
             [ yAxis, text_ [fontFamily "sans-serif", fontSize "15", x "5", y "5" ] [ text "% Fta"]]
         , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "series" ] <|
          List.map (column (xScale model.nRange)) model.nRange
-        , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "3px", fill "none" ] []]
-        , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "3px", fill "none" ][]]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ] []]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none" ][]]
         ]
 
 main : Svg msg
