@@ -103,6 +103,37 @@ myCI nRange data =
     List.map (lineGenerator nRange) data
         |> Shape.line Shape.linearCurve
 
+makeHline: List (Strategy, Float) -> (Strategy, Float) ->  String
+makeHline nRange myPoint =
+    let
+        x = Tuple.first myPoint
+        y = Tuple.second myPoint
+        myX1 = (Scale.convert (xScale nRange) x) - 25.0
+        myX2 = (Scale.convert (xScale nRange) x) + 25.0
+        myY  = Scale.convert yScale y
+    in
+        [Just (myX1,myY), Just (myX2,myY)] |> Shape.line Shape.linearCurve
+
+myFirst : List (Strategy, Float) -> (Strategy, Float)
+myFirst myCi =
+    let
+        mF = List.head myCi
+    in
+        case mF of
+            Just mF -> mF
+            Nothing -> (Uncalled, 0.0)
+
+mySec : List (Strategy, Float) -> (Strategy, Float)
+mySec myCi =
+    let
+        mS = List.head (List.reverse myCi)
+    in
+        case mS of
+            Just mS -> mS
+            Nothing -> (Uncalled, 0.0)
+
+
+                       
 bandOffset : Model  -> String
 bandOffset model  =
     toString (0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
@@ -122,8 +153,28 @@ view model =
             [ yAxis, text_ [fontFamily "sans-serif", fontSize "15", x "5", y "5" ] [ text "% Fta"]]
         , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "series" ] <|
          List.map (column (xScale model.nRange)) model.nRange
-        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ] []]
+
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ]
+            [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none" ]
+                 []
+            ]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ]
+            [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ]
+             []
+            ]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ]
+            [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none" ]
+             []
+            ]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ]
+            [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none" ]
+                 []
+            ]
         , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ] [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none" ][]]
+        , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), class "ci" ]
+            [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none" ]
+                 []
+            ]
         ]
 
 main : Svg msg
