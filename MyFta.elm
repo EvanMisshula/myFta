@@ -16,17 +16,17 @@ import Visualization.Shape as Shape
 
 w : Float
 w =
-    900
+    950
 
 
 h : Float
 h =
-    450
+    500
 
 
 padding : Float
 padding =
-    30
+    45
 
 type alias Model = { nRange : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
@@ -76,6 +76,9 @@ yAxis : Svg msg
 yAxis =
     Axis.axis { defaultOptions | orientation = Axis.Left, tickCount = 6 } yScale
 
+translate : number -> number -> Svg.Attribute msg
+translate x y =
+    transform ("translate(" ++ toString x ++ ", " ++ toString y ++ ")")
 
 column : BandScale Strategy -> ( Strategy, Float ) -> Svg msg
 column xScale ( myStrategy, value ) =
@@ -133,7 +136,17 @@ mySec myCi =
             Just mS -> mS
             Nothing -> (Uncalled, 0.0)
 
-
+myMidX: Model -> Float                       
+myMidX model =
+    let
+        allStrat = List.map Tuple.first model.nRange
+        allXcoord = List.map (Scale.convert (xScale model.nRange)) allStrat
+        myXsum = List.sum allXcoord
+        myXlen = List.length allXcoord
+               
+    in
+       ( myXsum / (toFloat myXlen) +  0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
+                                    
                        
 bandOffset : Model  -> String
 bandOffset model  =
@@ -151,7 +164,18 @@ view model =
         , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
             [ xAxis model.nRange ]
         , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
-            [ yAxis, text_ [fontFamily "sans-serif", fontSize "15", x "5", y "5" ] [ text "% Fta"]]
+            [ yAxis,
+                  text_
+                  [ fontFamily "sans-serif"
+                  , fontSize "15"
+                  , stroke "black"
+                  , x "5"
+                  , y "5"
+                  ]
+                  [
+                   text "% Fta"
+                  ]
+            ]
         , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), class "series" ] <|
          List.map (column (xScale model.nRange)) model.nRange
 
@@ -161,7 +185,7 @@ view model =
             ]
             , text_
                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-                 , y <| toString <|flip (+) 35.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
+                 , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
                  , textAnchor "right", stroke "white", fill "white"
                  ]
             [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
@@ -177,7 +201,7 @@ view model =
             ]
         , text_
               [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-              , y <| toString <|flip (+) 35.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
+              , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
               , textAnchor "right"
               ]
               [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
@@ -188,7 +212,7 @@ view model =
             ]
         , text_
               [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-              , y <| toString <|flip (+) 35.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
+              , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
               , textAnchor "right", stroke "white", fill "white"
               ]
               [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
@@ -201,10 +225,22 @@ view model =
             ]
         , text_
               [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-              , y <| toString <|flip (+) 35.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
+              , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
               , textAnchor "right"
               ]
               [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
+
+        , text_
+              [ translate (myMidX model) (h - padding / 2)
+              , fontFamily "sans-serif"
+              , fontSize "15"
+              , textAnchor "middle"
+              , dy "1em"
+              , stroke "black"
+                ]
+              [ text "Strategy" ]
+
+
         ]
 
 main : Svg msg
