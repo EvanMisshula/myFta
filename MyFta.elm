@@ -69,7 +69,12 @@ yScale =
 
 xAxis : List ( Strategy, Float ) -> Svg msg
 xAxis nRange =
-    Axis.axis { defaultOptions | orientation = Axis.Bottom, tickFormat = Just (fromStrategyToString) } (Scale.toRenderable (xScale nRange))
+    Axis.axis { defaultOptions
+                  | orientation = Axis.Bottom
+                  , tickFormat = Just (fromStrategyToString)
+                  , tickSizeInner = 15
+                  , tickSizeOuter = 6
+              } (Scale.toRenderable (xScale nRange))
         
 
 yAxis : Svg msg
@@ -158,6 +163,7 @@ view model =
         [ Svg.style [] [ text """
             .column rect { fill: rgba(70, 130, 180, 0.8); }
             .column text { display: none; }
+            .tick text { font: bold 15px sans-serif;  }
             .column:hover rect { fill: rgb(70, 130, 180); }
             .column:hover text { display: inline; }
           """ ]
