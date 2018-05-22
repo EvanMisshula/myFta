@@ -16,6 +16,7 @@
         "Visualization.Histogram"
     ],
     "dependencies": {
+        "1602/elm-feather": "2.2.0 <= v < 3.0.0",
         "Zinggi/elm-webgl-math": "1.0.5 <= v < 2.0.0",
         "elm-community/graph": "2.0.0 <= v < 3.0.0",
         "elm-community/intdict": "2.0.0 <= v < 3.0.0",
