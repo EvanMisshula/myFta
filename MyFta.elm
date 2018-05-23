@@ -5,8 +5,9 @@ module MyFta exposing (..)
 
 --import Date exposing (Date)
 --import Date.Extra as Date
-
-import Animation exposing (..)
+import Ease exposing (..)
+import AnimationFrame as Af exposing (times)
+import Animation as A exposing (from, to, ease, animation)
 import Time as T exposing (second)
 --import Color exposing (..)
 import Html as Html exposing (Html, div, p)
@@ -39,12 +40,15 @@ type alias Model = { nRange : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
                    , ciNotified : List (Strategy, Float)
                    , stratCount : List (Strategy, Int)
-                   , isDisp : CiDisplay
                    , ciOpacity : Float
+                   , currentTick : T.Time
+                   , activeAnimation : Maybe A.Animation
+                   , myStart : Float
+                   , myEnd : Float
                    }
 
-model : Model
-model = { nRange = [ ( Uncalled, 23.2)
+initialModel : Model
+initialModel = { nRange = [ ( Uncalled, 23.2)
                           , ( Notified, 15.5)
                           ] 
                , ciUncalled = [ ( Uncalled, 19.93253)
@@ -56,15 +60,18 @@ model = { nRange = [ ( Uncalled, 23.2)
                , stratCount = [ ( Uncalled, 630)
                               , ( Notified, 2312)
                               ]
-               , isDisp = Hide
-               , ciOpacity = 0.0
+               , ciOpacity = 1.0
+               , currentTick = 0
+               , activeAnimation = Nothing
+               , myStart = 0.0
+               , myEnd = 0.0
                }
 
 type Strategy = Uncalled
               | Notified
 
-type CiDisplay = Display
-               | Hide
+type Msg = Change
+         | CurrentTick T.Time
              
 fromStrategyToString : Strategy -> String
 fromStrategyToString myStrat =
@@ -115,7 +122,7 @@ column xScale ( myStrategy, value ) =
             , y <| toString <| Scale.convert yScale value - 5
             , textAnchor "right", stroke "black", fill "black"
             ]
-            [ text <| flip (++) " %" <| toString value ]
+            [ text <| Basics.flip (++) " %" <| toString value ]
         ]
 
 lineGenerator : List (Strategy, Float) -> (Strategy, Float) -> Maybe (Float, Float)
@@ -172,127 +179,144 @@ bandOffset : Model  -> String
 bandOffset model  =
     toString (0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
     
-view : Model -> Html CiDisplay
+view : Model -> Html Msg
 view model =
-    Html.div []
-        [ Html.p
-              [ Hatt.class "ciIndicator"
-              , Hatt.style [("padding-left", "35px")]
-              , Hevent.onClick Display
-              ]
-              [ text "show confidence intervals"]
-        , Html.p
-              [ Hatt.class "ciIndicator"
-              , Hatt.style [("padding-left", "35px")]
-              , Hevent.onClick Hide
-              ]
-              [ text "hide confidence intervals"]
-        
-        , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
-            [ Svg.style [] [ text """
-                                   .column rect { fill: rgba(70, 130, 180, 0.8); }
-                                   .column text { display: none; }
-                                   .tick text { font: bold 15px sans-serif;  }
-                                   .column:hover rect { fill: rgb(70, 130, 180); }
-                                   .column:hover text { display: inline; }
-                                   """ ]
-            , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
-                [ xAxis model.nRange ]
-            , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
-                [ yAxis,
-                      text_
-                      [ fontFamily "sans-serif"
-                      , fontSize "15"
-                      , stroke "black"
-                      , x "5"
-                      , y "5"
-                      ]
-                      [
-                       text "% Fta"
-                      ]
-                ]
-            , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), Satt.class "series" ] <|
-                List.map (column (xScale model.nRange)) model.nRange
-                    
-            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeOpacity <| toString <| model.ciOpacity , strokeWidth "2px", fill "none"]
-                     []
-                ]
-            , text_
-                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
-                  , textAnchor "right", stroke "white", fill "white", strokeOpacity <| toString <| model.ciOpacity
-                  ]
-                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
-                      
-            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
-                     []
-                ]
+    let 
+        mySval =
+            case model.activeAnimation of
 
-            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
-                     []
-                ]
-            , text_
-                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
-                  , textAnchor "right", strokeOpacity <| toString <| model.ciOpacity
-                  ]
-                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
+        Nothing -> 0
 
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity]
-                       []
+        Just a -> A.animate model.currentTick a
+
+    in
+        Html.div []
+            [ Html.p
+                  [ Hatt.class "ciIndicator"
+                  , Hatt.style [("padding-left", "35px")]
+                  , Hevent.onClick Change
                   ]
-            , text_
-                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
-                  , textAnchor "right", stroke "white", fill "white", strokeOpacity <| toString <| model.ciOpacity
-                  ]
-                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
+                  [ text <| "toggle confidence intervals" ++ " " ++ (toString model.myStart) ++ " " ++ (toString model.myEnd)]
                       
-            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
-                     []
-                ]
-            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
-                     []
-                ]
-            , text_
-                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
-                  , textAnchor "right", strokeOpacity <| toString <| model.ciOpacity
-                  ]
-                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
+            , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
+                [ Svg.style [] [ text """
+                                       .column rect { fill: rgba(70, 130, 180, 0.8); }
+                                       .column text { display: none; }
+                                       .tick text { font: bold 15px sans-serif;  }
+                                       .column:hover rect { fill: rgb(70, 130, 180); }
+                                       .column:hover text { display: inline; }
+                                       """ ]
+                , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
+                    [ xAxis model.nRange ]
+                , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
+                    [ yAxis,
+                          text_
+                          [ fontFamily "sans-serif"
+                          , fontSize "15"
+                          , stroke "black"
+                          , x "5"
+                          , y "5"
+                          ]
+                          [
+                           text "% Fta"
+                          ]
+                    ]
+                , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), Satt.class "series" ] <|
+                    List.map (column (xScale model.nRange)) model.nRange
                         
-            , text_
-                  [ translate (myMidX model) (h - padding / 2)
-                  , fontFamily "sans-serif"
-                  , fontSize "15"
-                  , textAnchor "middle"
-                  , dy "1em"
-                  , stroke "black"
-                  ]
-                  [ text "Strategy" ]
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeOpacity <| toString <| mySval , strokeWidth "2px", fill "none"]
+                         []
+                    ]
+                , text_
+                      [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
+                      , y <| toString <|Basics.flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
+                      , textAnchor "right", stroke "white", fill "white", opacity <| toString <| mySval
+                      ]
+                      [ text <| Basics.flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
+                          
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| mySval ]
+                         []
+                    ]
+                      
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| mySval ]
+                         []
+                    ]
+                , text_
+                      [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
+                      , y <| toString <|Basics.flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
+                      , textAnchor "right", opacity <| toString <| mySval
+                      ]
+                      [ text <| Basics.flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
+                          
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| mySval]
+                         []
+                    ]
+                , text_
+                      [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
+                      , y <| toString <|Basics.flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
+                      , textAnchor "right", stroke "white", fill "white", opacity <| toString <| mySval
+                      ]
+                      [ text <| Basics.flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
+                      
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| mySval ]
+                         []
+                    ]
+                , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                    [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| mySval ]
+                         []
+                    ]
+                , text_
+                      [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
+                      , y <| toString <|Basics.flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
+                      , textAnchor "right", opacity <| toString <| mySval
+                      ]
+                      [ text <| Basics.flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
+                          
+                , text_
+                      [ translate (myMidX model) (h - padding / 2)
+                      , fontFamily "sans-serif"
+                      , fontSize "15"
+                      , textAnchor "middle"
+                      , dy "1em"
+                      , stroke "black"
+                      ]
+                      [ text "Strategy" ]
+                ]
             ]
-        ]
 
-update: CiDisplay -> Model ->  Model
+update: Msg -> Model ->  ( Model, Cmd msg)
 update msg model =
-    case msg of
-        Display ->
-            { model | isDisp = Display }
-        Hide ->
-            { model | isDisp = Hide }
-
+        case msg of
+            Change  ->
+                  let
+                      myStart1 = model.ciOpacity
+                      myEnd1 = -1.0 * ( model.ciOpacity - 1.0)
+                  in
+                      ( { model
+                            | ciOpacity = myEnd1
+                            , activeAnimation = Just (A.animation model.currentTick
+                                                     |> A.from myStart1
+                                                     |> A.to myEnd1
+                                                     |> A.duration (3*second)
+                                                     |> ease Ease.inOutElastic
+                                                     )
+                            , myStart = myStart1
+                            , myEnd = myEnd1
+                        }, Cmd.none)
+            CurrentTick time ->
+                ( { model | currentTick = time }, Cmd.none)
         
 
-main : Program Never Model CiDisplay
+main : Program Never Model Msg
 main =
-    Html.beginnerProgram
-        { model = model
-        , view = view
+    Html.program
+        { init = (initialModel, Cmd.none)
         , update = update
+        , view = view
+        , subscriptions = (\_ -> Af.times CurrentTick)
         }
