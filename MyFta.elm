@@ -35,29 +35,30 @@ type alias Model = { nRange : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
                    , ciNotified : List (Strategy, Float)
                    , stratCount : List (Strategy, Int)
-                   , ciClick : Int
+                   , isDisp : CiDisplay           
                    }
 
 model : Model
 model = { nRange = [ ( Uncalled, 23.2)
-                   , ( Notified, 15.5)
-                   ] 
-        , ciUncalled = [ ( Uncalled, 19.93253)
-                       , ( Uncalled, 26.67034)
-                       ] 
-        , ciNotified = [ ( Notified, 14.03265)
-                       , ( Notified, 17.02423)
-                    ]
-        , stratCount = [ ( Uncalled, 630)
-                       , ( Notified, 2312)
-                       ]
-        , ciClick = 0
-        }
+                          , ( Notified, 15.5)
+                          ] 
+               , ciUncalled = [ ( Uncalled, 19.93253)
+                              , ( Uncalled, 26.67034)
+                              ] 
+               , ciNotified = [ ( Notified, 14.03265)
+                              , ( Notified, 17.02423)
+                              ]
+               , stratCount = [ ( Uncalled, 630)
+                              , ( Notified, 2312)
+                              ]
+               , isDisp = Hide
+               }
+
 type Strategy = Uncalled
               | Notified
 
-type CiMsg = Display
-           | Hide
+type CiDisplay = Display
+               | Hide
              
 fromStrategyToString : Strategy -> String
 fromStrategyToString myStrat =
@@ -165,132 +166,125 @@ bandOffset : Model  -> String
 bandOffset model  =
     toString (0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
     
---view : Model -> Html Msg
+view : Model -> Html CiDisplay
 view model =
     Html.div []
         [ Html.p
               [ Hatt.class "ciIndicator"
               , Hatt.style [("padding-left", "35px")]
-              , Hevent.onClick (Increment 1)
+              , Hevent.onClick Display
               ]
               [ text "show confidence intervals"]
-              , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
-              [ Svg.style [] [ text """
-                                     .column rect { fill: rgba(70, 130, 180, 0.8); }
-                                     .column text { display: none; }
-                                     .tick text { font: bold 15px sans-serif;  }
-                                     .column:hover rect { fill: rgb(70, 130, 180); }
-                                     .column:hover text { display: inline; }
-                                     """ ]
-              , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
-                  [ xAxis model.nRange ]
-              , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
-                  [ yAxis,
-                        text_
-                        [ fontFamily "sans-serif"
-                        , fontSize "15"
-                        , stroke "black"
-                        , x "5"
-                        , y "5"
-                        ]
-                        [
-                         text "% Fta"
-                        ]
+        , Html.p
+              [ Hatt.class "ciIndicator"
+              , Hatt.style [("padding-left", "35px")]
+              , Hevent.onClick Hide
+              ]
+              [ text "hide confidence intervals"]
+        
+        , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
+            [ Svg.style [] [ text """
+                                   .column rect { fill: rgba(70, 130, 180, 0.8); }
+                                   .column text { display: none; }
+                                   .tick text { font: bold 15px sans-serif;  }
+                                   .column:hover rect { fill: rgb(70, 130, 180); }
+                                   .column:hover text { display: inline; }
+                                   """ ]
+            , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
+                [ xAxis model.nRange ]
+            , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
+                [ yAxis,
+                      text_
+                      [ fontFamily "sans-serif"
+                      , fontSize "15"
+                      , stroke "black"
+                      , x "5"
+                      , y "5"
+                      ]
+                      [
+                       text "% Fta"
+                      ]
+                ]
+            , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), Satt.class "series" ] <|
+                List.map (column (xScale model.nRange)) model.nRange
+                    
+            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none"]
+                     []
+                ]
+            , text_
+                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
+                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
+                  , textAnchor "right", stroke "white", fill "white"
                   ]
-              , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), Satt.class "series" ] <|
-                  List.map (column (xScale model.nRange)) model.nRange
+                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
                       
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none"]
-                       []
-                  ]
-              , text_
-                    [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-                    , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
-                    , textAnchor "right", stroke "white", fill "white"
-                    ]
-                    [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
+            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ]
+                     []
+                ]
 
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ]
-                       []
+            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none" ]
+                     []
+                ]
+            , text_
+                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
+                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
+                  , textAnchor "right"
                   ]
-
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none" ]
-                       []
-                  ]
-              , text_
-                    [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
-                    , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
-                    , textAnchor "right"
-                    ]
-                    [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
+                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
 
               , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
                   [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none"]
                        []
                   ]
-              , text_
-                    [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-                    , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
-                    , textAnchor "right", stroke "white", fill "white"
-                    ]
-                    [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
-
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none" ][]]
-              , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none" ]
-                       []
+            , text_
+                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
+                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
+                  , textAnchor "right", stroke "white", fill "white"
                   ]
-              , text_
-                    [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
-                    , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
-                    , textAnchor "right"
-                    ]
-                    [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
+                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
+                      
+            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none" ][]]
+            , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
+                [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none" ]
+                     []
+                ]
+            , text_
+                  [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
+                  , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
+                  , textAnchor "right"
+                  ]
+                  [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
                         
-              , text_
-                    [ translate (myMidX model) (h - padding / 2)
-                    , fontFamily "sans-serif"
-                    , fontSize "15"
-                    , textAnchor "middle"
-                    , dy "1em"
-                    , stroke "black"
-                    ]
-                    [ text "Strategy" ]
-              ]
+            , text_
+                  [ translate (myMidX model) (h - padding / 2)
+                  , fontFamily "sans-serif"
+                  , fontSize "15"
+                  , textAnchor "middle"
+                  , dy "1em"
+                  , stroke "black"
+                  ]
+                  [ text "Strategy" ]
+            ]
         ]
 
-type Msg
-    = Increment Int
-
-init : (Model, Cmd Msg)
-init =
-    ( model, Cmd Msg)
-
-updateCiClicks: Model -> Int -> Model
-updateCiClicks model count =
-    { model | ciClick = count + 1}
-        
-update: Msg -> Model -> ( Model, Cmd Msg)
+update: CiDisplay -> Model ->  Model
 update msg model =
     case msg of
-        Increment howMuch ->
-           (updateCiClicks model model.ciClick, Cmd.none)
-
-subscriptions: Model -> Sub Msg
-subscriptions model =
-    Sub.none
-                
+        Display ->
+            { model | isDisp = Display }
+        Hide ->
+            { model | isDisp = Hide }
 
         
---main : Html Msg
+
+main : Program Never Model CiDisplay
 main =
-    Html.program
-        { init = init
+    Html.beginnerProgram
+        { model = model
         , view = view
         , update = update
-        , subscriptions = subscriptions
         }
