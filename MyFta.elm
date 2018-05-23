@@ -5,6 +5,9 @@ module MyFta exposing (..)
 
 --import Date exposing (Date)
 --import Date.Extra as Date
+
+import Animation exposing (..)
+import Time as T exposing (second)
 import Html as Html exposing (Html, div, p)
 import Html.Attributes  as Hatt exposing (..)
 import Html.Events as Hevent exposing (onClick)
@@ -35,7 +38,8 @@ type alias Model = { nRange : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
                    , ciNotified : List (Strategy, Float)
                    , stratCount : List (Strategy, Int)
-                   , isDisp : CiDisplay           
+                   , isDisp : CiDisplay,
+                   , ciOpacity : Float
                    }
 
 model : Model
@@ -52,6 +56,7 @@ model = { nRange = [ ( Uncalled, 23.2)
                               , ( Notified, 2312)
                               ]
                , isDisp = Hide
+               , ciOpacity = 0.0
                }
 
 type Strategy = Uncalled
