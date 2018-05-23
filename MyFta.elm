@@ -8,6 +8,7 @@ module MyFta exposing (..)
 
 import Animation exposing (..)
 import Time as T exposing (second)
+--import Color exposing (..)
 import Html as Html exposing (Html, div, p)
 import Html.Attributes  as Hatt exposing (..)
 import Html.Events as Hevent exposing (onClick)
@@ -38,7 +39,7 @@ type alias Model = { nRange : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
                    , ciNotified : List (Strategy, Float)
                    , stratCount : List (Strategy, Int)
-                   , isDisp : CiDisplay,
+                   , isDisp : CiDisplay
                    , ciOpacity : Float
                    }
 
@@ -214,53 +215,55 @@ view model =
                 List.map (column (xScale model.nRange)) model.nRange
                     
             , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none"]
+                [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeOpacity <| toString <| model.ciOpacity , strokeWidth "2px", fill "none"]
                      []
                 ]
             , text_
                   [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
                   , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciUncalled
-                  , textAnchor "right", stroke "white", fill "white"
+                  , textAnchor "right", stroke "white", fill "white", strokeOpacity <| toString <| model.ciOpacity
                   ]
                   [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciUncalled))]
                       
             , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none" ]
+                [Svg.path [d (myCI model.nRange model.ciUncalled), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
                      []
                 ]
 
             , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none" ]
+                [Svg.path [d (makeHline model.nRange (mySec model.ciUncalled)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
                      []
                 ]
             , text_
                   [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Uncalled) - 75.0)
                   , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciUncalled
-                  , textAnchor "right"
+                  , textAnchor "right", strokeOpacity <| toString <| model.ciOpacity
                   ]
                   [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciUncalled))]
 
               , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                  [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none"]
+                  [Svg.path [d (makeHline model.nRange (myFirst model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity]
                        []
                   ]
             , text_
                   [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
                   , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| myFirst model.ciNotified
-                  , textAnchor "right", stroke "white", fill "white"
+                  , textAnchor "right", stroke "white", fill "white", strokeOpacity <| toString <| model.ciOpacity
                   ]
                   [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (myFirst model.ciNotified))]
                       
             , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none" ][]]
+                [Svg.path [d (myCI model.nRange model.ciNotified), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
+                     []
+                ]
             , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
-                [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none" ]
+                [Svg.path [d (makeHline model.nRange (mySec model.ciNotified)), stroke "black", strokeWidth "2px", fill "none", strokeOpacity <| toString <| model.ciOpacity ]
                      []
                 ]
             , text_
                   [ x <| toString <| ((Scale.convert (Scale.toRenderable (xScale model.nRange)) Notified) - 75.0)
                   , y <| toString <|flip (+) 45.0 <| Scale.convert yScale <| Tuple.second <| mySec model.ciNotified
-                  , textAnchor "right"
+                  , textAnchor "right", strokeOpacity <| toString <| model.ciOpacity
                   ]
                   [ text <| flip (++) " %" <| Erd.round 2 (Tuple.second (mySec model.ciNotified))]
                         
