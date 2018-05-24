@@ -104,7 +104,9 @@ type Msg = ToggleCi
 type Regime = Theory
     | Reality
 
-
+type Result = WarrantIss
+            | NoWarrant
+    
 fromStrategyToString : Strategy -> String
 fromStrategyToString myStrat =
     case myStrat of
@@ -208,6 +210,9 @@ myMidX model =
 bandOffset : Model  -> String
 bandOffset model  =
     toString (0.5 * (Scale.bandwidth (xScale model.nRange)) + padding)
+
+            
+
     
 view : Model -> Html Msg
 view model =
@@ -331,6 +336,7 @@ view model =
                       ]
                       [ text "Strategy" ]
                 ]
+                
                 
            ]
 
