@@ -235,7 +235,7 @@ view model =
                         , Hatt.style [("padding-left", "35px")]
                         ]
                         [ radio "Null Hypothesis p(Fta | Notice) == p (Fta | no-notice)" (model.thisRegime == Theory) (SwitchTo Theory)
-                        , radio "Null Hypothesis p(Fta | Notice) < p (Fta | no-notice)" (model.thisRegime == Reality) (SwitchTo Reality)
+                        , radio "Research Hypothesis p(Fta | Notice) < p (Fta | no-notice)" (model.thisRegime == Reality) (SwitchTo Reality)
                         ]
                   , fieldset [Hatt.class "ciIndicator"]
                       [ checkbox ToggleCi "Toggle confidence intervals"
@@ -359,8 +359,8 @@ update msg model =
                             endValues = model.nResearch
                             myStart1 = Tuple.second <| myFirst startValues
                             myEnd1   = Tuple.second <| myFirst endValues
-                            myStart2 = Tuple.second <| myFirst startValues
-                            myEnd2   = Tuple.second <| myFirst endValues
+                            myStart2 = Tuple.second <| mySec startValues
+                            myEnd2   = Tuple.second <| mySec endValues
                         in                
                             ( { model
                                   | nValues = endValues
@@ -388,8 +388,8 @@ update msg model =
                             endValues = model.nNull
                             myStart1 = Tuple.second <| myFirst startValues
                             myEnd1   = Tuple.second <| myFirst endValues
-                            myStart2 = Tuple.second <| myFirst startValues
-                            myEnd2   = Tuple.second <| myFirst endValues
+                            myStart2 = Tuple.second <| mySec startValues
+                            myEnd2   = Tuple.second <| mySec endValues
                         in
                             ( { model
                                   | nValues = endValues
