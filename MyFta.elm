@@ -9,6 +9,7 @@ import Ease exposing (..)
 import AnimationFrame as Af exposing (times)
 import Animation as A exposing (from, to, ease, animation)
 import Time as T exposing (second)
+--import Katex exposing (Latex, human, inline, display)
 --import Color exposing (..)
 import Html as Html exposing (Html, div, p, fieldset, label)
 import Html.Attributes  as Hatt exposing (..)
@@ -79,17 +80,17 @@ initialModel = { nRange = [ ( Uncalled, 23.2)
                , stratCount = [ ( Uncalled, 630)
                               , ( Notified, 2312)
                               ]
-               , ciOpacity = 1.0
+               , ciOpacity = 0.0
                , currentTick = 0
                , opacityAnimation = Nothing
                , uncalledAnimation = Nothing
                , notifiedAnimation = Nothing
                , startOpacity = 0.0
-               , endOpacity = 0.0
-               , startUncalled = 0.0
-               , endUncalled = 0.0
-               , startNotified = 0.0
-               , endNotified = 0.0
+               , endOpacity = 1.0
+               , startUncalled = 17.1312
+               , endUncalled = 23.2
+               , startNotified = 17.1312
+               , endNotified = 15.5
                , thisRegime = Theory
                }
 
@@ -355,8 +356,8 @@ update msg model =
                 case regime of
                     Theory ->
                         let 
-                            startValues = model.nNull
-                            endValues = model.nResearch
+                            startValues = model.nResearch
+                            endValues = model.nNull
                             myStart1 = Tuple.second <| myFirst startValues
                             myEnd1   = Tuple.second <| myFirst endValues
                             myStart2 = Tuple.second <| mySec startValues
@@ -384,8 +385,8 @@ update msg model =
                             
                     Reality ->
                         let 
-                            startValues = model.nResearch
-                            endValues = model.nNull
+                            startValues = model.nNull
+                            endValues = model.nResearch
                             myStart1 = Tuple.second <| myFirst startValues
                             myEnd1   = Tuple.second <| myFirst endValues
                             myStart2 = Tuple.second <| mySec startValues
