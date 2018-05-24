@@ -1,12 +1,23 @@
 <!doctype html>
 <head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.6.0/katex.min.css">
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" integrity="sha384-wITovz90syo1dJWVh32uuETPVEtGigN07tkttEqPv+uR2SE/mbQcG7ATL28aI9H0" crossorigin="anonymous">
+    <style>
+      /* LaTeX display environment will effect the LaTeX characters but not the layout on the page */
+      span.katex-display {
+        display: inherit; /* You may comment this out if you want the default behavior */
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.js" integrity="sha384-/y1Nn9+QQAipbNQWU65krzJralCnuOasHncUFXGkdwntGeSvQicrYkiUBwsgUqc1" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/contrib/auto-render.min.js" integrity="sha384-dq1/gEHSxPZQ7DdrM82ID4YVol9BYyU7GbWlIwnwyPzotpoc57wDw/guX8EaYGPx" crossorigin="anonymous"></script>
+    <title>
+      Fta Result
+    </title>
 </head>
 <body>
-  <div id="elm-area"></div>
   <script src="elm.js"></script>
   <script>
-    const elmDiv = document.getElementById("elm-area");
-    var app = Elm.MyFta.embed(elmDiv);
-  </script>
+    Elm.MyFta.fullscreen(); setTimeout(function () {
+      renderMathInElement(document.body, {delimiters: [{left: "$begin-inline$", right: "$end-inline$", display: false},{left: "$begin-display$", right: "$end-display$", display: true}]});
+    }, 0); </script>
 </body>

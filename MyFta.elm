@@ -9,7 +9,7 @@ import Ease exposing (..)
 import AnimationFrame as Af exposing (times)
 import Animation as A exposing (from, to, ease, animation)
 import Time as T exposing (second)
---import Katex exposing (Latex, human, inline, display)
+import Katex exposing (Latex, human, inline, display, print)
 --import Color exposing (..)
 import Html as Html exposing (Html, div, p, fieldset, label)
 import Html.Attributes  as Hatt exposing (..)
@@ -235,8 +235,8 @@ view model =
                         [ Hatt.class "nullVresearch"
                         , Hatt.style [("padding-left", "35px")]
                         ]
-                        [ radio "Null Hypothesis p(Fta | Notice) == p (Fta | no-notice)" (model.thisRegime == Theory) (SwitchTo Theory)
-                        , radio "Research Hypothesis p(Fta | Notice) < p (Fta | no-notice)" (model.thisRegime == Reality) (SwitchTo Reality)
+                        [ radio "H_0: \\pi(Fta | \\text{notice}) = \\pi(Fta | \\text{no-notice})" (model.thisRegime == Theory) (SwitchTo Theory)
+                        , radio "H_1: \\pi(Fta | \\text{notice}) < \\pi(Fta | \\text{no-notice})" (model.thisRegime == Reality) (SwitchTo Reality)
                         ]
                   , fieldset [Hatt.class "ciIndicator"]
                       [ checkbox ToggleCi "Toggle confidence intervals"
@@ -331,7 +331,8 @@ view model =
                       ]
                       [ text "Strategy" ]
                 ]
-            ]
+                
+           ]
 
 update: Msg -> Model ->  ( Model, Cmd msg)
 update msg model =
@@ -421,7 +422,7 @@ radio value isChecked msg =
         [ Hatt.style [("padding", "20px")]
     ]
     [ Html.input [ Hatt.type_ "radio", Hatt.name "nullVreality", Hevent.onClick msg, checked isChecked ] []
-    , text value
+    , text <| print <| inline value
     ]
 
 checkbox : msg -> String -> Html msg
