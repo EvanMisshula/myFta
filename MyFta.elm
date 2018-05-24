@@ -10,7 +10,7 @@ import AnimationFrame as Af exposing (times)
 import Animation as A exposing (from, to, ease, animation)
 import Time as T exposing (second)
 --import Color exposing (..)
-import Html as Html exposing (Html, div, p)
+import Html as Html exposing (Html, div, p, fieldset, label)
 import Html.Attributes  as Hatt exposing (..)
 import Html.Events as Hevent exposing (onClick)
 import Svg exposing (..)
@@ -37,20 +37,39 @@ padding =
     45
 
 type alias Model = { nRange : List (Strategy, Float)
+                   , nNull : List (Strategy, Float)
+                   , nResearch : List (Strategy, Float)
+                   , nValues : List (Strategy, Float)
                    , ciUncalled : List (Strategy, Float)  
                    , ciNotified : List (Strategy, Float)
                    , stratCount : List (Strategy, Int)
                    , ciOpacity : Float
                    , currentTick : T.Time
-                   , activeAnimation : Maybe A.Animation
-                   , myStart : Float
-                   , myEnd : Float
+                   , opacityAnimation : Maybe A.Animation
+                   , uncalledAnimation : Maybe A.Animation
+                   , notifiedAnimation : Maybe A.Animation
+                   , startOpacity : Float
+                   , endOpacity : Float
+                   , startUncalled : Float
+                   , endUncalled : Float
+                   , startNotified : Float
+                   , endNotified : Float
+                   , thisRegime : Regime
                    }
 
 initialModel : Model
 initialModel = { nRange = [ ( Uncalled, 23.2)
                           , ( Notified, 15.5)
-                          ] 
+                          ]
+               , nNull = [ ( Uncalled, 17.1312)
+                         , ( Notified, 17.1312)
+                         ]
+               , nResearch = [ ( Uncalled, 23.2)
+                             , ( Notified, 15.5)
+                             ]
+               , nValues = [ ( Uncalled, 17.1312)
+                           , ( Notified, 17.1312)
+                           ]
                , ciUncalled = [ ( Uncalled, 19.93253)
                               , ( Uncalled, 26.67034)
                               ] 
@@ -62,17 +81,29 @@ initialModel = { nRange = [ ( Uncalled, 23.2)
                               ]
                , ciOpacity = 1.0
                , currentTick = 0
-               , activeAnimation = Nothing
-               , myStart = 0.0
-               , myEnd = 0.0
+               , opacityAnimation = Nothing
+               , uncalledAnimation = Nothing
+               , notifiedAnimation = Nothing
+               , startOpacity = 0.0
+               , endOpacity = 0.0
+               , startUncalled = 0.0
+               , endUncalled = 0.0
+               , startNotified = 0.0
+               , endNotified = 0.0
+               , thisRegime = Theory
                }
 
 type Strategy = Uncalled
               | Notified
 
-type Msg = Change
+type Msg = ToggleCi
          | CurrentTick T.Time
-             
+         | SwitchTo Regime
+
+type Regime = Theory
+    | Reality
+
+
 fromStrategyToString : Strategy -> String
 fromStrategyToString myStrat =
     case myStrat of
@@ -82,8 +113,6 @@ fromStrategyToString myStrat =
 xScale : List (Strategy, Float ) -> BandScale Strategy
 xScale model =
     Scale.band { defaultBandConfig | paddingInner = 0.1, paddingOuter = 0.2 } (List.map Tuple.first model) ( 0, w - 2 * padding )
-
-
         
 yScale : ContinuousScale
 yScale =
@@ -183,21 +212,35 @@ view : Model -> Html Msg
 view model =
     let 
         mySval =
-            case model.activeAnimation of
-
-        Nothing -> 0
-
-        Just a -> A.animate model.currentTick a
-
+            case model.opacityAnimation of
+                Nothing -> model.ciOpacity
+                Just a -> A.animate model.currentTick a
+        uncalledValue =
+            case model.uncalledAnimation of
+                Nothing -> Tuple.second ( myFirst model.nValues)
+                Just a -> A.animate model.currentTick a
+        notifiedValue =
+            case model.notifiedAnimation of
+                Nothing -> Tuple.second ( mySec model.nValues)
+                Just a -> A.animate model.currentTick a
+        myValues = [ (Uncalled, uncalledValue)
+                   , (Notified, notifiedValue)
+                   ]
     in
         Html.div []
-            [ Html.p
-                  [ Hatt.class "ciIndicator"
-                  , Hatt.style [("padding-left", "35px")]
-                  , Hevent.onClick Change
-                  ]
-                  [ text <| "toggle confidence intervals" ++ " " ++ (toString model.myStart) ++ " " ++ (toString model.myEnd)]
-                      
+            [ Html.div
+                  []
+                  [ Html.fieldset
+                        [ Hatt.class "nullVresearch"
+                        , Hatt.style [("padding-left", "35px")]
+                        ]
+                        [ radio "Null Hypothesis p(Fta | Notice) == p (Fta | no-notice)" (model.thisRegime == Theory) (SwitchTo Theory)
+                        , radio "Null Hypothesis p(Fta | Notice) < p (Fta | no-notice)" (model.thisRegime == Reality) (SwitchTo Reality)
+                        ]
+                  , fieldset [Hatt.class "ciIndicator"]
+                      [ checkbox ToggleCi "Toggle confidence intervals"
+                      ]
+                  ]    
             , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
                 [ Svg.style [] [ text """
                                        .column rect { fill: rgba(70, 130, 180, 0.8); }
@@ -222,7 +265,7 @@ view model =
                           ]
                     ]
                 , g [ transform ("translate(" ++ toString padding ++ ", " ++ toString padding ++ ")"), Satt.class "series" ] <|
-                    List.map (column (xScale model.nRange)) model.nRange
+                    List.map (column (xScale model.nRange)) myValues
                         
                 , g [ transform ("translate(" ++ bandOffset model ++ ", " ++ toString padding ++ ")"), Satt.class "ci" ]
                     [Svg.path [d (makeHline model.nRange (myFirst model.ciUncalled)), stroke "black", strokeOpacity <| toString <| mySval , strokeWidth "2px", fill "none"]
@@ -292,26 +335,103 @@ view model =
 update: Msg -> Model ->  ( Model, Cmd msg)
 update msg model =
         case msg of
-            Change  ->
+            ToggleCi  ->
                   let
-                      myStart1 = model.ciOpacity
-                      myEnd1 = -1.0 * ( model.ciOpacity - 1.0)
+                      startOpacity1 = model.ciOpacity
+                      endOpacity1 = -1.0 * ( model.ciOpacity - 1.0)
                   in
                       ( { model
-                            | ciOpacity = myEnd1
-                            , activeAnimation = Just (A.animation model.currentTick
-                                                     |> A.from myStart1
-                                                     |> A.to myEnd1
+                            | ciOpacity = endOpacity1
+                            , opacityAnimation = Just (A.animation model.currentTick
+                                                     |> A.from startOpacity1
+                                                     |> A.to endOpacity1
                                                      |> A.duration (3*second)
                                                      |> ease Ease.inOutElastic
                                                      )
-                            , myStart = myStart1
-                            , myEnd = myEnd1
+                            , startOpacity = startOpacity1
+                            , endOpacity = endOpacity1
                         }, Cmd.none)
+            SwitchTo regime ->
+                case regime of
+                    Theory ->
+                        let 
+                            startValues = model.nNull
+                            endValues = model.nResearch
+                            myStart1 = Tuple.second <| myFirst startValues
+                            myEnd1   = Tuple.second <| myFirst endValues
+                            myStart2 = Tuple.second <| myFirst startValues
+                            myEnd2   = Tuple.second <| myFirst endValues
+                        in                
+                            ( { model
+                                  | nValues = endValues
+                                  , uncalledAnimation = Just (A.animation model.currentTick
+                                                             |> A.from myStart1
+                                                             |> A.to myEnd1
+                                                             |> A.duration (3*second)
+                                                             |> ease Ease.inOutElastic
+                                                             )
+                                  , notifiedAnimation = Just (A.animation model.currentTick
+                                                             |> A.from myStart2
+                                                             |> A.to myEnd2
+                                                             |> A.duration (3*second)
+                                                             |> ease Ease.inOutElastic
+                                                             )
+                                  , startUncalled = myStart1
+                                  , endUncalled = myEnd1
+                                  , startNotified = myStart2
+                                  , endUncalled = myEnd2
+                              }, Cmd.none)
+                            
+                    Reality ->
+                        let 
+                            startValues = model.nResearch
+                            endValues = model.nNull
+                            myStart1 = Tuple.second <| myFirst startValues
+                            myEnd1   = Tuple.second <| myFirst endValues
+                            myStart2 = Tuple.second <| myFirst startValues
+                            myEnd2   = Tuple.second <| myFirst endValues
+                        in
+                            ( { model
+                                  | nValues = endValues
+                                  , uncalledAnimation = Just (A.animation model.currentTick
+                                                             |> A.from myStart1
+                                                             |> A.to myEnd1
+                                                             |> A.duration (3*second)
+                                                             |> ease Ease.inOutElastic
+                                                             )
+                                  , notifiedAnimation = Just (A.animation model.currentTick
+                                                             |> A.from myStart2
+                                                             |> A.to myEnd2
+                                                             |> A.duration (3*second)
+                                                             |> ease Ease.inOutElastic
+                                                             )
+                                  , startUncalled = myStart1
+                                  , endUncalled = myEnd1
+                                  , startNotified = myStart2
+                                  , endUncalled = myEnd2
+                              }, Cmd.none)
+
             CurrentTick time ->
                 ( { model | currentTick = time }, Cmd.none)
         
+radio : String -> Bool -> msg -> Html msg
+radio value isChecked msg =
+    label
+        [ Hatt.style [("padding", "20px")]
+    ]
+    [ Html.input [ Hatt.type_ "radio", Hatt.name "nullVreality", Hevent.onClick msg, checked isChecked ] []
+    , text value
+    ]
 
+checkbox : msg -> String -> Html msg
+checkbox msg name =
+  label
+    [ Hatt.style [("padding", "20px")]
+    ]
+    [ Html.input [ Hatt.type_ "checkbox", onClick msg ] []
+    , text name
+    ]
+                    
 main : Program Never Model Msg
 main =
     Html.program
