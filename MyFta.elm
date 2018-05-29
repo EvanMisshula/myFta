@@ -20,6 +20,8 @@ import Round as Erd exposing (round)
 import Visualization.Axis as Axis exposing (defaultOptions)
 import Visualization.Scale as Scale exposing (BandConfig, BandScale, ContinuousScale, defaultBandConfig)
 import Visualization.Shape as Shape
+import FormatNumber exposing (format)
+import FormatNumber.Locales exposing (usLocale)
 -- import SampleData exposing (timeSeries)
 
 
@@ -61,6 +63,7 @@ type alias Model = { nRange : List (Strategy, Float)
                    , tableWidth : Float
                    , showTest : Bool
                    , chiSq : Float
+                   , pValue : Float
                    }
 
 initialModel : Model
@@ -107,6 +110,8 @@ initialModel = { nRange = [ ( Uncalled, 23.2)
                , tableWidth = 0.0
                , showTest = False
                , chiSq = 20.086
+               , pValue = 3.701531 * 10^(-6)
+
                }
 
 
@@ -502,7 +507,11 @@ viewTable  model myTableWidth =
             
             ]
                         
-            
+oddsLocale : FormatNumber.Locales.Locale
+oddsLocale =
+    { usLocale
+          | decimals = 0
+    }
 
 viewTest : Model -> Html Msg
 viewTest  model =
@@ -535,11 +544,27 @@ viewTest  model =
                         , ("background-color","green") ]
         testString =
             "\\chi^2(1)= " ++ (toString model.chiSq) ++ ", \\text{ }p = 3.7\\text{ x } 10^{-6}"
+        oddsString1 =
+            "The odds this happened by chance are one in "
+        oddsNumFt =
+            FormatNumber.format oddsLocale <| 1.0/initialModel.pValue
+            
     in
         Html.div [ Hatt.class "sig"
                  , Hatt.style testStyle
                  ]
-            [ text <| print <| inline <| testString ]
+            [ text <| print <| inline <| testString
+            , Html.div [Hatt.class "sigBuff"
+                       , Hatt.style [ ("display","block")
+                                    , ("height", "30px")
+                                    , ("width", "30px")
+                                    ]
+                       ]
+                []
+            , Html.div [Hatt.class "sigOdds"
+                       , Hatt.style [ ("padding-left","200px") ]
+                       ] [text <| oddsString1 ++ oddsNumFt ++ "."]
+            ]
             
                         
 update: Msg -> Model ->  ( Model, Cmd msg)
