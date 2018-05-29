@@ -49,6 +49,7 @@ type alias Model = { nRange : List (Strategy, Float)
                    , opacityAnimation : Maybe A.Animation
                    , uncalledAnimation : Maybe A.Animation
                    , notifiedAnimation : Maybe A.Animation
+                   , tableAnimation : Maybe A.Animation
                    , startOpacity : Float
                    , endOpacity : Float
                    , startUncalled : Float
@@ -56,6 +57,10 @@ type alias Model = { nRange : List (Strategy, Float)
                    , startNotified : Float
                    , endNotified : Float
                    , thisRegime : Regime
+                   , myResults : List ExpResult
+                   , tableWidth : Float
+                   , showTest : Bool
+                   , chiSq : Float
                    }
 
 initialModel : Model
@@ -85,6 +90,7 @@ initialModel = { nRange = [ ( Uncalled, 23.2)
                , opacityAnimation = Nothing
                , uncalledAnimation = Nothing
                , notifiedAnimation = Nothing
+               , tableAnimation = Nothing
                , startOpacity = 0.0
                , endOpacity = 1.0
                , startUncalled = 17.1312
@@ -92,7 +98,31 @@ initialModel = { nRange = [ ( Uncalled, 23.2)
                , startNotified = 17.1312
                , endNotified = 15.5
                , thisRegime = Theory
+               , myResults =
+                     [ (Uncalled, NoWarrant,484)
+                     , (Uncalled, WarrantIss, 146)
+                     , (Notified, NoWarrant, 1954)
+                     , (Notified, WarrantIss, 358)
+                     ]
+               , tableWidth = 0.0
+               , showTest = False
+               , chiSq = 20.086
                }
+
+
+
+         
+selectCases : Strategy -> DefOutcome -> Model -> Int
+selectCases strategy defOutcome model =
+    let
+        tupleEq strategy defoutcome =
+            \(a,b,_) -> (a == strategy) && (b == defOutcome)
+        myMaybeElement = List.head (List.filter (tupleEq strategy defOutcome)  model.myResults)
+    in
+        case myMaybeElement of
+            Nothing -> 0
+            Just (_, _, c) -> c
+    
 
 type Strategy = Uncalled
               | Notified
@@ -100,12 +130,16 @@ type Strategy = Uncalled
 type Msg = ToggleCi
          | CurrentTick T.Time
          | SwitchTo Regime
-
+         | ToggleCMatrix
+         | ToggleTest 
+             
 type Regime = Theory
     | Reality
 
-type Result = WarrantIss
-            | NoWarrant
+type DefOutcome = WarrantIss
+                | NoWarrant
+
+type alias ExpResult = (Strategy, DefOutcome, Int)
     
 fromStrategyToString : Strategy -> String
 fromStrategyToString myStrat =
@@ -216,7 +250,20 @@ bandOffset model  =
     
 view : Model -> Html Msg
 view model =
-    let 
+    let
+        regimeBool =
+            case model.thisRegime of
+                Theory -> True
+                Reality -> False
+        regimeStyle =
+            case model.thisRegime of
+                Theory ->
+                    [ ("display", "inline")
+                    , ("text-decoration", "line-through")
+                    ]
+                Reality ->
+                    [ ("display", "inline") ]
+                    
         mySval =
             case model.opacityAnimation of
                 Nothing -> model.ciOpacity
@@ -232,29 +279,57 @@ view model =
         myValues = [ (Uncalled, uncalledValue)
                    , (Notified, notifiedValue)
                    ]
+        myTableWidth =
+            case model.tableAnimation of
+                Nothing -> model.tableWidth
+                Just a -> A.animate model.currentTick a
     in
         Html.div []
             [ Html.div
                   []
-                  [ Html.fieldset
-                        [ Hatt.class "nullVresearch"
-                        , Hatt.style [("padding-left", "35px")]
+                  [ Html.div [ Hatt.class "thePoint"]
+                        [ Html.fieldset
+                              [ Hatt.class "nullVresearch"
+                              , Hatt.style [("padding-left", "35px")]
+                              ]
+                              [ radio "H_0: \\pi(Fta | \\text{notice}) = \\pi(Fta | \\text{no-notice})" (model.thisRegime == Theory) (SwitchTo Theory)
+                              , radio "H_1: \\pi(Fta | \\text{notice}) < \\pi(Fta | \\text{no-notice})" (model.thisRegime == Reality) (SwitchTo Reality)
+                              ]
                         ]
-                        [ radio "H_0: \\pi(Fta | \\text{notice}) = \\pi(Fta | \\text{no-notice})" (model.thisRegime == Theory) (SwitchTo Theory)
-                        , radio "H_1: \\pi(Fta | \\text{notice}) < \\pi(Fta | \\text{no-notice})" (model.thisRegime == Reality) (SwitchTo Reality)
+                        , Html.div [ Hatt.class "dataDetail"
+                                   , Hatt.style [
+                                          ("display","inline")
+                                         ]
+                                   ]
+                        [ fieldset [ Hatt.class "ciDetail"
+                                   , Hatt.style regimeStyle
+                                   , Hatt.disabled regimeBool
+                                   ]
+                              [ checkbox ToggleCi "Toggle confidence intervals"
+                              ]
+                        , fieldset [Hatt.class "cmatrixDetail"
+                                   , Hatt.style regimeStyle
+                                   , Hatt.disabled regimeBool
+                                   ]
+                            [ checkbox ToggleCMatrix "Toggle confusion matrix"
+                            ]
+                        , fieldset [ Hatt.class "testDetail"
+                                   , Hatt.style regimeStyle
+                                   , Hatt.disabled regimeBool
+                                   ]
+                            [ checkbox ToggleTest  "test"
                         ]
-                  , fieldset [Hatt.class "ciIndicator"]
-                      [ checkbox ToggleCi "Toggle confidence intervals"
-                      ]
-                  ]    
+                  ]
+                  , Html.div [] []
             , svg [ Satt.width (toString w ++ "px"), Satt.height (toString h ++ "px") ]
-                [ Svg.style [] [ text """
-                                       .column rect { fill: rgba(70, 130, 180, 0.8); }
-                                       .column text { display: none; }
-                                       .tick text { font: bold 15px sans-serif;  }
-                                       .column:hover rect { fill: rgb(70, 130, 180); }
-                                       .column:hover text { display: inline; }
-                                       """ ]
+                [ Svg.style [(Satt.display "block")]
+                      [ text """
+                              .column rect { fill: rgba(70, 130, 180, 0.8); }
+                              .column text { display: none; }
+                              .tick text { font: bold 15px sans-serif;  }
+                              .column:hover rect { fill: rgb(70, 130, 180); }
+                              .column:hover text { display: inline; }
+                              """ ]
                 , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString (h - padding) ++ ")") ]
                     [ xAxis model.nRange ]
                 , g [ transform ("translate(" ++ toString (padding - 1) ++ ", " ++ toString padding ++ ")") ]
@@ -336,13 +411,149 @@ view model =
                       ]
                       [ text "Strategy" ]
                 ]
-                
-                
+            , viewTable model myTableWidth
+            , viewTest model
            ]
+            ]
 
+
+viewTable : Model -> Float -> Html Msg
+viewTable  model myTableWidth =
+    let
+        tableStyle =
+            case myTableWidth of
+                0.0 ->
+                    [ ("height","100px")
+                    ,  ("border-collapse","collapse")
+                    , ("width", "0px")
+                    , ("margin-left", "30px")
+                    , ("visibility", "hidden")
+                    ]
+                _ ->
+                    [ ("height","100px")
+                    ,  ("border-collapse","collapse")
+                    , ("width", (++) (toString (Basics.round myTableWidth)) "px")
+                    , ("margin-left", "30px")
+                    ]
+
+    in
+        Html.div [ Hatt.class "p2" ]
+            [ Html.table [ Hatt.style tableStyle ]
+                  [ Html.thead []
+                        [ Html.tr [Hatt.style [ ("border-bottom","1px solid #ddd")
+                                              ]
+                                  ]
+                              [ Html.th [ Hatt.style
+                                              [
+                                               ("text-align", "left")    
+                                              ]
+                                        ] [ Html.text "strategy" ]
+                              , Html.th [ Hatt.style
+                                              [
+                                               ("text-align", "right")    
+                                              ]
+                                        ] [ Html.text "no-warrant-issued" ]
+                              , Html.th [ Hatt.style
+                                              [
+                                               ("text-align", "right")    
+                                              ]
+                                        ] [ Html.text "warrant-issued" ]
+                              ]
+                        ]
+                  , Html.tr [Hatt.style [ ("border-bottom","1px solid #ddd")
+                                        , ("tr:hover", "{background-color: #f5f5f5}")
+                                        ]
+                            ]
+                      [ Html.td [] [ Html.text "no-notification" ]
+                      , Html.td
+                          [ Hatt.style
+                                [
+                                 ("text-align", "right")    
+                                ]
+                          ] [ Html.text <| toString <| selectCases Uncalled NoWarrant model ]
+                      , Html.td [ Hatt.style
+                                      [
+                                       ("text-align", "right")    
+                                      ]
+                                ] [ Html.text <| toString <| selectCases Uncalled WarrantIss model ]
+                      ]
+                  , Html.tr [Hatt.style [ ("border-bottom","1px solid #ddd")
+                                        , ("tr:hover", "{background-color: #f5f5f5}")            
+                                        ]
+                            ]
+                      [ Html.td [] [ Html.text "notification" ]
+                      , Html.td [ Hatt.style
+                                      [
+                                       ("text-align", "right")    
+                                      ]
+                                ] [ Html.text <| toString <| selectCases Notified NoWarrant model ]
+                      , Html.td [ Hatt.style
+                                      [
+                                       ("text-align", "right")    
+                                      ]
+                                ] [ Html.text <| toString <| selectCases Notified WarrantIss model ]
+                      ]
+                                  
+                  ]
+            , Html.div [Hatt.style [("height","45px")
+                                   , ("width", "40px")
+                                   ]
+                       ] []
+            
+            ]
+                        
+            
+
+viewTest : Model -> Html Msg
+viewTest  model =
+    let
+        testStyle =
+            case model.showTest of
+                True -> 
+                    [ ("height","auto")
+                    , ("border-collapse","collapse")
+                    , ("width", "0px")
+                    , ("font-family", "sans-serif")
+                    , ("font-size", "20px")
+                    , ("display","inline")
+                    , ("margin-left", "340px")
+                    , ("margin-top", "30px")
+                    , ("padding-top", "15px")
+                    ]
+
+                False ->
+                    [ ("height","100px")
+                    , ("border-collapse","collapse")
+                    , ("width", "0px")
+                    , ("margin-left", "30px")
+                    , ("visibility", "hidden")
+                    , ("display", "inline")
+                    ]
+
+        testBuffStyle = [ ("height","30px")
+                        , ("width", "50px")
+                        , ("background-color","green") ]
+        testString =
+            "\\chi^2(1)= " ++ (toString model.chiSq) ++ ", \\text{ }p = 3.7\\text{ x } 10^{-6}"
+    in
+        Html.div [ Hatt.class "sig"
+                 , Hatt.style testStyle
+                 ]
+            [ text <| print <| inline <| testString ]
+            
+                        
 update: Msg -> Model ->  ( Model, Cmd msg)
 update msg model =
         case msg of
+            ToggleTest ->
+                let
+                    myTestStatus = model.showTest
+                in
+                  
+                    ( {model |
+                          showTest = not myTestStatus
+                      }, Cmd.none)
+                                          
             ToggleCi  ->
                   let
                       startOpacity1 = model.ciOpacity
@@ -359,6 +570,22 @@ update msg model =
                             , startOpacity = startOpacity1
                             , endOpacity = endOpacity1
                         }, Cmd.none)
+
+            ToggleCMatrix ->
+                let
+                    startWidth1 = model.tableWidth
+                    endWidth1 = -1.0 * (model.tableWidth - 840.0)
+                in
+                    ( { model
+                            | tableWidth = endWidth1
+                            , tableAnimation = Just (A.animation model.currentTick
+                                                     |> A.from startWidth1
+                                                     |> A.to endWidth1
+                                                     |> A.duration (3*second)
+                                                     |> ease Ease.inOutElastic
+                                                     )
+                        }, Cmd.none)
+                    
             SwitchTo regime ->
                 case regime of
                     Theory ->
@@ -388,6 +615,7 @@ update msg model =
                                   , endUncalled = myEnd1
                                   , startNotified = myStart2
                                   , endUncalled = myEnd2
+                                  , thisRegime = Theory
                               }, Cmd.none)
                             
                     Reality ->
@@ -417,6 +645,7 @@ update msg model =
                                   , endUncalled = myEnd1
                                   , startNotified = myStart2
                                   , endUncalled = myEnd2
+                                  , thisRegime = Reality
                               }, Cmd.none)
 
             CurrentTick time ->
